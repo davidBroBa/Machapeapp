@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "842751423393",
+    "project_id": "touchapp-a6cf4",
+    "storage_bucket": "touchapp-a6cf4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:842751423393:android:ff6671713bf52038f4d1e0",
+        "android_client_info": {
+          "package_name": "com.example.touchapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAVT7nNogi15b5NR3AhhMbn33g6jBwBoXU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
