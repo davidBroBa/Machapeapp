@@ -1,5 +1,6 @@
 package com.example.touchapp
 
+import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
 import androidx.compose.foundation.Image
@@ -8,7 +9,8 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*import androidx.compose.runtime.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,38 +35,46 @@ enum class TipoObjeto {
     COMIDA, BASURA, CORAZON
 }
 
-/** Ancho del mapache en dp. */
-private const val MAPACHE_ANCHO = 120f
+/** Lado de la imagen del mapache, en dp. */
+private const val MAPACHE_LADO = 120f
 
-/** Alto del mapache en dp. */
-private const val MAPACHE_ALTO = 120f
+/**
+ * Distancia del borde inferior al CENTRO de la imagen del mapache, en dp.
+ *
+ * Se usa el mismo valor para dibujar y para colisionar: antes el dibujo
+ * colocaba la imagen arriba de una caja y la colision usaba el alto de esa
+ * caja, con lo que la hitbox quedaba 60dp por encima del mapache.
+ */
+private const val MAPACHE_CENTRO_Y = 270f
 
-/** Distancia vertical del borde inferior al centro del mapache, en dp. */
-private const val MAPACHE_ALTO_PANTALLA = 330f
+/*
+ * Hitbox del mapache: un rectangulo pequeno sobre la cabeza.
+ *
+ * Medido sobre me.png (1024x1536) dibujado en 120x120dp con
+ * ContentScale.Fit. La cabeza ocupa, en dp dentro de esa caja:
+ *
+ *   x 45..81, y 32..64   ->  36 x 32 dp
+ *
+ * Es un rectangulo, no la silueta entera: solo cuenta acertar en la
+ * cabeza, no rozarlo con el cuerpo.
+ */
+private const val CABEZA_X0 = 45f
+private const val CABEZA_Y0 = 32f
+private const val CABEZA_X1 = 81f
+private const val CABEZA_Y1 = 64f
 
 /** Lado del objeto que cae, en dp. */
 private const val OBJETO_LADO = 80f
 
 /*
- * Semiejes de la hitbox, en dp.
+ * Semiejes de los objetos, en dp. Medidos sobre los pixeles opacos de
+ * cada PNG (umbral alfa >= 24) y escalados al tamano en que se dibujan.
+ * Las siluetas son mas anchas que altas, por eso son elipses.
  *
- * Medidos sobre los pixeles opacos de cada PNG (umbral alfa >= 24) y
- * escalados al tamano en el que se dibujan. No son circulos: las siluetas
- * son mas anchas que altas.
- *
- *   me.png      1024x1536 -> 120x120dp con ContentScale.Fit
- *                silueta 737x728px -> 57.6 x 56.9dp
- *   sushi.png    1024x1024 -> 80x80dp
- *                silueta 616x555px -> 48.1 x 43.4dp
- *   ok.png      1024x1024 -> 80x80dp
- *                silueta 722x638px -> 56.4 x 49.8dp
- *   corazon.png 1024x1024 -> 80x80dp
- *                silueta 684x559px -> 53.4 x 43.7dp
+ *   sushi.png    1024x1024 -> 80x80dp, silueta 616x555px -> 48.1 x 43.4dp
+ *   ok.png       1024x1024 -> 80x80dp, silueta 722x638px -> 56.4 x 49.8dp
+ *   corazon.png  1024x1024 -> 80x80dp, silueta 684x559px -> 53.4 x 43.7dp
  */
-private const val MAPACHE_RADIO_X = 29f
-private const val MAPACHE_RADIO_Y = 28f
-
-/** Semiejes de cada objeto, en dp. */
 private const val COMIDA_RADIO_X = 24f
 private const val COMIDA_RADIO_Y = 22f
 
@@ -106,16 +116,21 @@ fun GameScreen(
     var notificacionEnviada by remember { mutableStateOf(false) }
     var objetos by remember { mutableStateOf(listOf<Objeto>()) }
 
+    val prefs = remember {
+        context.getSharedPreferences("machapeapp", Context.MODE_PRIVATE)
+    }
+    var mejorPuntuacion by remember { mutableStateOf(prefs.getInt("mejorPuntuacion", 0)) }
+
     // El mapache arranca centrado y siempre dentro de los limites.
     var mapacheX by remember {
-        mutableStateOf((anchoPantalla - MAPACHE_ANCHO) / 2f)
+        mutableStateOf((anchoPantalla - MAPACHE_LADO) / 2f)
     }
 
     // Direccion continua mientras la flecha este pulsada.
     var direccion by remember { mutableStateOf(0f) }
 
     val limiteMapa = remember(anchoPantalla) {
-        (anchoPantalla - MAPACHE_ANCHO).coerceAtLeast(0f)
+        (anchoPantalla - MAPACHE_LADO).coerceAtLeast(0f)
     }
 
     /**
@@ -137,7 +152,7 @@ fun GameScreen(
         while (estadoJuego == EstadoJuego.JUGANDO) {
             // 60 FPS
             val ahora = System.currentTimeMillis()
-            val velocidad = calcularVelocidad(puntuacion) * 1.5f
+            val velocidad = velocidadCaida(puntuacion)
 
             // Deslizar el mapache segun la direccion activa.
             if (direccion != 0f) {
@@ -151,7 +166,7 @@ fun GameScreen(
                 .filter { it.y < altoPantalla + OBJETO_LADO }
 
             // Generar un objeto cada cierto tiempo, no cada frame.
-            if (ahora - ultimoSpawn >= 700L) {
+            if (ahora - ultimoSpawn >= 800L) {
                 ultimoSpawn = ahora
 
                 val tipo = when (Random.nextInt(10)) {
@@ -160,8 +175,8 @@ fun GameScreen(
                     else -> TipoObjeto.CORAZON
                 }
 
-                val centroX = MAPACHE_ANCHO / 2f +
-                    Random.nextFloat() * (anchoPantalla - MAPACHE_ANCHO)
+                val centroX = MAPACHE_LADO / 2f +
+                    Random.nextFloat() * (anchoPantalla - MAPACHE_LADO)
 
                 val candidatos = objetos.filter { it.y < 0f }
                 val sinChoque = candidatos.all { existente ->
@@ -173,9 +188,14 @@ fun GameScreen(
                 }
             }
 
-            // Colisiones contra la silueta real del mapache y de cada objeto.
-            val centroMapacheX = mapacheX + MAPACHE_ANCHO / 2f
-            val centroMapacheY = altoPantalla - MAPACHE_ALTO_PANTALLA
+            // Colision contra el rectangulo de la cabeza del mapache.
+            // El rectangulo y el dibujo comparten la misma posicion, para
+            // que la hitbox no se desvíe de la imagen.
+            val cabezaCentroX = mapacheX + (CABEZA_X0 + CABEZA_X1) / 2f
+            val cabezaCentroY = altoPantalla - MAPACHE_CENTRO_Y +
+                MAPACHE_LADO / 2f + CABEZA_Y0 + (CABEZA_Y1 - CABEZA_Y0) / 2f
+            val cabezaSemiX = (CABEZA_X1 - CABEZA_X0) / 2f
+            val cabezaSemiY = (CABEZA_Y1 - CABEZA_Y0) / 2f
 
             val colisionados = objetos.filter { objeto ->
                 val (objetoRx, objetoRy) = when (objeto.tipo) {
@@ -184,13 +204,13 @@ fun GameScreen(
                     TipoObjeto.CORAZON -> CORAZON_RADIO_X to CORAZON_RADIO_Y
                 }
 
-                colisionObjeto(
-                    dx = centroMapacheX - objeto.x,
-                    dy = centroMapacheY - objeto.y,
-                    radioX = MAPACHE_RADIO_X,
-                    radioY = MAPACHE_RADIO_Y,
-                    objetoX = objetoRx,
-                    objetoY = objetoRy
+                colisionRectElipse(
+                    dx = objeto.x - cabezaCentroX,
+                    dy = objeto.y - cabezaCentroY,
+                    semiX = cabezaSemiX,
+                    semiY = cabezaSemiY,
+                    radioX = objetoRx,
+                    radioY = objetoRy
                 )
             }
 
@@ -210,6 +230,11 @@ fun GameScreen(
                 puntuacion = puntosNuevos
                 vidas = vidasNuevas
                 objetos = objetos - colisionados.toSet()
+
+                if (puntosNuevos > mejorPuntuacion) {
+                    mejorPuntuacion = puntosNuevos
+                    prefs.edit().putInt("mejorPuntuacion", mejorPuntuacion).apply()
+                }
 
                 if (verificarGameOver(vidasNuevas)) {
                     sonido.reproducirGameOver()
@@ -243,7 +268,10 @@ fun GameScreen(
     ) {
         when (estadoJuego) {
             EstadoJuego.INICIO -> {
-                PantallaInicio(onEmpezar = { estadoJuego = EstadoJuego.JUGANDO })
+                PantallaInicio(
+                    mejorPuntuacion = mejorPuntuacion,
+                    onEmpezar = { estadoJuego = EstadoJuego.JUGANDO }
+                )
             }
 
             EstadoJuego.JUGANDO, EstadoJuego.PAUSADO -> {
@@ -251,7 +279,7 @@ fun GameScreen(
 
                 MapacheEnPantalla(mapacheX, altoPantalla)
 
-                MarcadorSuperior(puntuacion, vidas)
+                MarcadorSuperior(puntuacion, vidas, mejorPuntuacion)
 
                 BotonPausa(
                     pausado = estadoJuego == EstadoJuego.PAUSADO,
@@ -312,40 +340,48 @@ private fun ObjetosEnPantalla(objetos: List<Objeto>) {
     }
 }
 
-/** Dibuja el mapache alineado al fondo, desplazado solo en horizontal. */
+/**
+ * Dibuja el mapache.
+ *
+ * El offset sale de MAPACHE_CENTRO_Y, el mismo valor que usa la colision,
+ * de modo que el rectangulo de la cabeza cae siempre sobre la cabeza.
+ */
 @Composable
 private fun BoxScope.MapacheEnPantalla(mapacheX: Float, altoPantalla: Float) {
-    Box(
+    Image(
+        painter = painterResource(id = R.drawable.me),
+        contentDescription = "Mapache",
         modifier = Modifier
-            .fillMaxWidth()
-            .align(Alignment.BottomCenter)
-            .height(MAPACHE_ALTO_PANTALLA.dp)
-            .padding(bottom = (MAPACHE_ALTO_PANTALLA - MAPACHE_ALTO).dp)
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.me),
-            contentDescription = "Mapache",
-            modifier = Modifier
-                .size(MAPACHE_ANCHO.dp, MAPACHE_ALTO.dp)
-                .offset(x = mapacheX.dp)
-        )
-    }
+            .size(MAPACHE_LADO.dp)
+            .offset(
+                x = mapacheX.dp,
+                y = (altoPantalla - MAPACHE_CENTRO_Y - MAPACHE_LADO / 2f).dp
+            )
+    )
 }
 
-/** Puntos y vidas en la parte superior. */
+/** Puntos, mejor marca y vidas en la parte superior. */
 @Composable
-private fun MarcadorSuperior(puntuacion: Int, vidas: Int) {
+private fun MarcadorSuperior(puntuacion: Int, vidas: Int, mejorPuntuacion: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = "Puntos: $puntuacion",
             color = Color.White,
             style = MaterialTheme.typography.titleLarge
         )
+
+        Text(
+            text = "Mejor: $mejorPuntuacion",
+            color = Color(0xFFFFF3B0),
+            style = MaterialTheme.typography.titleMedium
+        )
+
         Text(
             text = "Vidas: $vidas",
             color = Color.White,
@@ -455,9 +491,9 @@ private fun OverlayPausa() {
     }
 }
 
-/** Pantalla de inicio con el boton Empezar. */
+/** Pantalla de inicio con la mejor marca y el boton Empezar. */
 @Composable
-fun PantallaInicio(onEmpezar: () -> Unit) {
+fun PantallaInicio(mejorPuntuacion: Int, onEmpezar: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -471,6 +507,12 @@ fun PantallaInicio(onEmpezar: () -> Unit) {
                 text = "MachapeJuego",
                 style = MaterialTheme.typography.headlineLarge,
                 color = Color.White
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Mejor marca: $mejorPuntuacion",
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFFFFF3B0)
             )
             Spacer(modifier = Modifier.height(32.dp))
             Button(onClick = onEmpezar) {

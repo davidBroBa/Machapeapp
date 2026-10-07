@@ -24,49 +24,77 @@ class GameLogicTest {
         assertEquals(375f, resultado, 0.01f)
     }
 
-    // RF-2: Colisión elíptica
-    // Semiejes del mapache medidos: 29 x 28. Comida: 24 x 22.
+    // RF-2: Colisión rectángulo (cabeza) contra elipse (objeto)
+    // Cabeza del mapache: 36 x 32 dp -> semiejes 18 x 16.
+    // Comida: 48.1 x 43.4 dp -> semiejes 24 x 22.
     @Test
-    fun `colisionObjeto detecta colision en el centro`() {
-        val resultado = colisionObjeto(0f, 0f, 29f, 28f, 24f, 22f)
-        assertTrue(resultado)
+    fun `colisionRectElipse acierta cuando el objeto cae sobre la cabeza`() {
+        assertTrue(colisionRectElipse(0f, 0f, 18f, 16f, 24f, 22f))
     }
 
     @Test
-    fun `colisionObjeto detecta colision justo en el borde horizontal`() {
-        // 29 + 24 = 53 es el borde exacto: todavia colisiona.
-        val resultado = colisionObjeto(52f, 0f, 29f, 28f, 24f, 22f)
-        assertTrue(resultado)
+    fun `colisionRectElipse no acierta con el objeto encima de la cabeza`() {
+        // 90dp por encima: fuera del alcance vertical (16 + 22 = 38).
+        assertFalse(colisionRectElipse(0f, -90f, 18f, 16f, 24f, 22f))
     }
 
     @Test
-    fun `colisionObjeto no detecta colision pasado el borde horizontal`() {
-        val resultado = colisionObjeto(54f, 0f, 29f, 28f, 24f, 22f)
-        assertFalse(resultado)
+    fun `colisionRectElipse no acierta con el objeto en el cuerpo`() {
+        // El cuerpo queda 45dp por debajo del centro de la cabeza.
+        assertFalse(colisionRectElipse(0f, 45f, 18f, 16f, 24f, 22f))
     }
 
     @Test
-    fun `colisionObjeto no detecta colision pasado el borde vertical`() {
-        // 28 + 22 = 50 es el borde exacto: mas alla ya no colisiona.
-        val resultado = colisionObjeto(0f, 51f, 29f, 28f, 24f, 22f)
-        assertFalse(resultado)
+    fun `colisionRectElipse aguanta el borde de la cabeza`() {
+        // Justo en el borde horizontal: 18 + 24 = 42 todavia toca.
+        assertTrue(colisionRectElipse(41f, 0f, 18f, 16f, 24f, 22f))
+        assertFalse(colisionRectElipse(43f, 0f, 18f, 16f, 24f, 22f))
     }
 
     @Test
-    fun `colisionObjeto la elipse es mas ancha que alta`() {
-        // Eje horizontal 53dp, vertical 50dp. A 51dp solo cabe en horizontal.
-        val horizontal = colisionObjeto(51f, 0f, 29f, 28f, 24f, 22f)
-        val vertical = colisionObjeto(0f, 51f, 29f, 28f, 24f, 22f)
-        assertTrue(horizontal)
-        assertFalse(vertical)
+    fun `colisionRectElipse es mas pequena que un objeto`() {
+        // La cabeza (36x32) no llega al ancho de la comida (48x43).
+        assertTrue(36f < 48.1f)
+        assertTrue(32f < 43.4f)
     }
 
     @Test
-    fun `colisionObjeto devuelve false con semiejes degenerados`() {
-        // Silueta del mapache sin area.
-        assertFalse(colisionObjeto(0f, 0f, 0f, 0f, 24f, 22f))
-        // Silueta del objeto sin area.
-        assertFalse(colisionObjeto(0f, 0f, 29f, 28f, 0f, 0f))
+    fun `colisionRectElipse devuelve false si alguna figura no tiene area`() {
+        assertFalse(colisionRectElipse(0f, 0f, 0f, 16f, 24f, 22f))
+        assertFalse(colisionRectElipse(0f, 0f, 18f, 0f, 24f, 22f))
+        assertFalse(colisionRectElipse(0f, 0f, 18f, 16f, 0f, 22f))
+    }
+
+    // Velocidad de caída
+    @Test
+    fun `velocidadCaida arranca suave`() {
+        assertEquals(2.2f, velocidadCaida(0), 0.001f)
+    }
+
+    @Test
+    fun `velocidadCaida crece con la puntuacion`() {
+        assertTrue(velocidadCaida(20) > velocidadCaida(0))
+        assertTrue(velocidadCaida(50) > velocidadCaida(20))
+    }
+
+    @Test
+    fun `velocidadCaida tiene techo y no lo pasa`() {
+        val techo = velocidadCaida(50)
+        assertEquals(techo, velocidadCaida(200), 0.001f)
+        assertEquals(8.5f, techo, 0.001f)
+    }
+
+    // solapanRect
+    @Test
+    fun `solapanRect detecta solape`() {
+        assertTrue(solapanRect(0f, 0f, 18f, 16f, 24f, 22f))
+        assertTrue(solapanRect(41f, 37f, 18f, 16f, 24f, 22f))
+    }
+
+    @Test
+    fun `solapanRect detecta no solape`() {
+        assertFalse(solapanRect(43f, 0f, 18f, 16f, 24f, 22f))
+        assertFalse(solapanRect(0f, 39f, 18f, 16f, 24f, 22f))
     }
 
     // RF-3: Procesar comida

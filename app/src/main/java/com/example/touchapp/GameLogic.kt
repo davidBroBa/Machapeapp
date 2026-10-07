@@ -1,5 +1,6 @@
 package com.example.touchapp
 
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 /**
@@ -38,40 +39,68 @@ fun moverMapache(
 }
 
 /**
- * Verifica si hay colisión elíptica entre el mapache y un objeto.
+ * Velocidad de caida de los objetos, en dp por frame a 60 FPS.
  *
- * No usa un círculo porque las siluetas reales de las imágenes son elípticas
- * y más anchas que altas. Los radios vienen de medir los píxeles opacos de
- * cada PNG, así la hitbox coincide con lo que el jugador ve.
- *
- * @param dx diferencia horizontal entre centros, en dp.
- * @param dy diferencia vertical entre centros, en dp.
- * @param radioX semieje horizontal de la silueta del mapache, en dp.
- * @param radioY semieje vertical de la silueta del mapache, en dp.
- * @param objetoX semieje horizontal de la silueta del objeto, en dp.
- * @param objetoY semieje vertical de la silueta del objeto, en dp.
+ * Rampa suave y con techo: el juego tiene que volverse mas dificil sin
+ * llegar a ser imposible. A 0 puntos un objeto tarda unos 6 s en cruzar
+ * la pantalla; en el techo, unos 1.6 s.
  */
-fun colisionObjeto(
+fun velocidadCaida(puntuacion: Int): Float {
+    val base = 2.2f
+    val incremento = 0.16f
+    val techo = 8.5f
+    return (base + puntuacion * incremento).coerceAtMost(techo)
+}
+
+/**
+ * Colisión entre un rectángulo (la cabeza del mapache) y una elipse (un objeto).
+ *
+ * Se mide la distancia desde el centro del objeto hasta el punto del
+ * rectángulo más cercano, y se normaliza con los semiejes de la elipse.
+ * Si el centro del objeto cae dentro del rectángulo, la distancia es 0 y
+ * hay impacto directo.
+ *
+ * @param dx distancia horizontal del centro del objeto al del rectángulo, en dp.
+ * @param dy distancia vertical del centro del objeto al del rectángulo, en dp.
+ * @param semiX semiancho del rectángulo, en dp.
+ * @param semiY semialtura del rectángulo, en dp.
+ * @param radioX semieje horizontal de la elipse del objeto, en dp.
+ * @param radioY semieje vertical de la elipse del objeto, en dp.
+ */
+fun colisionRectElipse(
     dx: Float,
     dy: Float,
+    semiX: Float,
+    semiY: Float,
     radioX: Float,
-    radioY: Float,
-    objetoX: Float,
-    objetoY: Float
+    radioY: Float
 ): Boolean {
-    // Una silueta sin area (semieje en cero o negativo) no colisiona nunca.
-    // Ademas evita division por cero al normalizar.
-    if (radioX <= 0f || radioY <= 0f || objetoX <= 0f || objetoY <= 0f) return false
+    // Sin area no hay nada que tocar.
+    if (semiX <= 0f || semiY <= 0f || radioX <= 0f || radioY <= 0f) return false
 
-    val ejeX = radioX + objetoX
-    val ejeY = radioY + objetoY
+    // Cuanto sobresale el objeto por cada lado del rectangulo.
+    val fueraX = (abs(dx) - semiX).coerceAtLeast(0f)
+    val fueraY = (abs(dy) - semiY).coerceAtLeast(0f)
 
-    // Normaliza el vector en el espacio elíptico: 1.0 es justo el borde.
-    val normalizadoX = dx / ejeX
-    val normalizadoY = dy / ejeY
-    val distancia = sqrt(normalizadoX * normalizadoX + normalizadoY * normalizadoY)
+    val normalizadoX = fueraX / radioX
+    val normalizadoY = fueraY / radioY
 
-    return distancia < 1f
+    return (normalizadoX * normalizadoX + normalizadoY * normalizadoY) < 1f
+}
+
+/**
+ * Verifica si dos rectangulos se solapan. Ejes alineados.
+ */
+fun solapanRect(
+    dx: Float,
+    dy: Float,
+    semiAX: Float,
+    semiAY: Float,
+    semiBX: Float,
+    semiBY: Float
+): Boolean {
+    if (semiAX <= 0f || semiAY <= 0f || semiBX <= 0f || semiBY <= 0f) return false
+    return abs(dx) < semiAX + semiBX && abs(dy) < semiAY + semiBY
 }
 
 /**
