@@ -18,6 +18,10 @@
 | GameLogic.kt con funciones puras | Testeable sin emulador |
 | Sonidos envueltos en clase `SonidosJuego` | Evita `SoundPool.release()` doble |
 
+- **Servidor de notificaciones:** `TIPOS_REENVIO` declara los eventos de `/touch/{roomCode}`. Un `if` con un solo tipo (`need_attention`) descartaba en silencio `bored_attention`. Al añadir un evento nuevo hay que registrarlo **en el servidor**, no solo en el cliente.
+- **Un solo origen de verdad para la posición:** dibujo y colisión deben leer la misma constante (`MAPACHE_CENTRO_Y`). Con dos cálculos paralelos la hitbox quedó 60dp por encima del mapache sin que nada lo delatara.
+- **Medir la silueta, no estimar:** `PIL` + `getbbox()` sobre el canal alfa da los límites reales. Luego renderizar la imagen con el rectángulo encima para confirmarlo a la vista.
+
 ## Aprendizaje y Errores a Evitar
 - **UNIDADES:** `screenHeightDp.dp.toPx()` da px; aplicar `.toDp()` encima divide mal. Usar `screenHeightDp.toFloat()` y `dp` directo.
 - **`align`:** solo compila dentro de `BoxScope`/`RowScope`. En un composable suelto falla con "Unresolved reference".

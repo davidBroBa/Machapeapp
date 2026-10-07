@@ -24,6 +24,37 @@ class GameLogicTest {
         assertEquals(375f, resultado, 0.01f)
     }
 
+    // posicionMapa: la cabeza va en la parte ALTA de la imagen.
+    @Test
+    fun `posicionMapa pone la cabeza por encima del centro de la imagen`() {
+        val lado = 120f
+        val centroY = 270f
+        val alto = 800f
+
+        val (_, cabezaY) = posicionMapa(0f, alto, centroY, lado, 63f, 32f, 64f)
+        val centroImagen = alto - centroY
+
+        // La cabeza esta en la parte de arriba: mas cerca del borde superior.
+        assertTrue(cabezaY < centroImagen)
+    }
+
+    @Test
+    fun `posicionMapa coincide con el rectangulo medido`() {
+        // Pantalla de 800dp, imagen de 120dp centrada a 270dp del borde inferior.
+        val (x, y) = posicionMapa(100f, 800f, 270f, 120f, 63f, 32f, 64f)
+        // Esquina superior de la imagen: 800 - 270 - 60 = 470.
+        // Centro de la cabeza: 470 + (32+64)/2 = 518.
+        assertEquals(163f, x, 0.01f)
+        assertEquals(518f, y, 0.01f)
+    }
+
+    @Test
+    fun `posicionMapa sigue al mapache en horizontal`() {
+        val (x1, _) = posicionMapa(0f, 800f, 270f, 120f, 63f, 32f, 64f)
+        val (x2, _) = posicionMapa(56f, 800f, 270f, 120f, 63f, 32f, 64f)
+        assertEquals(56f, x2 - x1, 0.01f)
+    }
+
     // RF-2: Colisión rectángulo (cabeza) contra elipse (objeto)
     // Cabeza del mapache: 36 x 32 dp -> semiejes 18 x 16.
     // Comida: 48.1 x 43.4 dp -> semiejes 24 x 22.

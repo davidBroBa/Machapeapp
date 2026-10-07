@@ -191,9 +191,15 @@ fun GameScreen(
             // Colision contra el rectangulo de la cabeza del mapache.
             // El rectangulo y el dibujo comparten la misma posicion, para
             // que la hitbox no se desvíe de la imagen.
-            val cabezaCentroX = mapacheX + (CABEZA_X0 + CABEZA_X1) / 2f
-            val cabezaCentroY = altoPantalla - MAPACHE_CENTRO_Y +
-                MAPACHE_LADO / 2f + CABEZA_Y0 + (CABEZA_Y1 - CABEZA_Y0) / 2f
+            val (cabezaCentroX, cabezaCentroY) = posicionMapa(
+                mapacheX = mapacheX,
+                altoPantalla = altoPantalla,
+                centroY = MAPACHE_CENTRO_Y,
+                lado = MAPACHE_LADO,
+                x0 = (CABEZA_X0 + CABEZA_X1) / 2f,
+                y0 = CABEZA_Y0,
+                y1 = CABEZA_Y1
+            )
             val cabezaSemiX = (CABEZA_X1 - CABEZA_X0) / 2f
             val cabezaSemiY = (CABEZA_Y1 - CABEZA_Y0) / 2f
 

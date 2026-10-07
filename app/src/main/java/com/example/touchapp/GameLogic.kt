@@ -53,6 +53,31 @@ fun velocidadCaida(puntuacion: Int): Float {
 }
 
 /**
+ * Posicion del mapa en la parte baja de la caja de 120dp.
+ *
+ * @param mapacheX esquina izquierda de la imagen del mapache, en dp.
+ * @param altoPantalla alto de la pantalla, en dp.
+ * @param centroY distancia del borde inferior al centro de la imagen, en dp.
+ * @param lado lado de la imagen del mapache, en dp.
+ * @param x0 semiancho del mapa en la caja, en dp.
+ * @param y0 distancia de la esquina superior de la imagen a la cabeza, en dp.
+ * @param y1 distancia de la esquina superior de la imagen al final de la cabeza, en dp.
+ */
+fun posicionMapa(
+    mapacheX: Float,
+    altoPantalla: Float,
+    centroY: Float,
+    lado: Float,
+    x0: Float,
+    y0: Float,
+    y1: Float
+): Pair<Float, Float> {
+    // La esquina superior de la imagen es centro - lado/2.
+    val arriba = altoPantalla - centroY - lado / 2f
+    return mapacheX + x0 to arriba + (y0 + y1) / 2f
+}
+
+/**
  * Colisión entre un rectángulo (la cabeza del mapache) y una elipse (un objeto).
  *
  * Se mide la distancia desde el centro del objeto hasta el punto del
