@@ -62,6 +62,14 @@ onValueWritten(
                                 "Alguien quiere tu atención 💜"
                         },
 
+                        data: {
+                            title:
+                                "Tu machape te necesita 🥺",
+
+                            body:
+                                "Alguien quiere tu atención 💜"
+                        },
+
                         android: {
                             priority: "high"
                         }

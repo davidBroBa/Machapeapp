@@ -96,33 +96,33 @@ class MainActivity : ComponentActivity() {
                         MODE_PRIVATE
                     )
 
+                var myId =
+                    prefs.getString(
+                        "myId",
+                        null
+                    )
+
+                if (myId == null) {
+
+                    myId =
+                        System.currentTimeMillis()
+                            .toString()
+
+                    prefs.edit()
+                        .putString(
+                            "myId",
+                            myId
+                        )
+                        .apply()
+                }
+
                 val roomCode =
                     prefs.getString(
                         "roomCode",
                         ""
-                    )
+                    ) ?: ""
 
-                if (!roomCode.isNullOrEmpty()) {
-
-                    var myId =
-                        prefs.getString(
-                            "myId",
-                            null
-                        )
-
-                    if (myId == null) {
-
-                        myId =
-                            System.currentTimeMillis()
-                                .toString()
-
-                        prefs.edit()
-                            .putString(
-                                "myId",
-                                myId
-                            )
-                            .apply()
-                    }
+                if (roomCode.isNotEmpty()) {
 
                     FirebaseDatabase
                         .getInstance()
@@ -277,6 +277,14 @@ fun TouchApp(
         mutableStateOf(0)
     }
 
+    var tardadoTouches by remember {
+        mutableStateOf(0)
+    }
+
+    var pendingTouches by remember {
+        mutableStateOf(0)
+    }
+
     var activar by remember {
         mutableStateOf(true)
     }
@@ -351,6 +359,37 @@ fun TouchApp(
                             if (value != null) {
 
                                 validTouches = value
+                            }
+                        }
+
+                        override fun onCancelled(
+                            error: DatabaseError
+                        ) {}
+                    }
+                )
+
+            // ⏰ CONTADOR TARDADO
+            FirebaseDatabase
+                .getInstance()
+                .getReference(
+                    "tardado/$roomCode"
+                )
+                .addValueEventListener(
+
+                    object : ValueEventListener {
+
+                        override fun onDataChange(
+                            snapshot: DataSnapshot
+                        ) {
+
+                            val value =
+                                snapshot.getValue(
+                                    Int::class.java
+                                )
+
+                            if (value != null) {
+
+                                tardadoTouches = value
                             }
                         }
 
@@ -463,6 +502,61 @@ fun TouchApp(
                                 ) {
 
                                     validarAtencion = true
+                                    pendingTouches++
+
+                                    if (pendingTouches >= 5) {
+
+                                        pendingTouches = 0
+
+                                        FirebaseDatabase
+                                            .getInstance()
+                                            .getReference(
+                                                "counter/$roomCode"
+                                            )
+                                            .runTransaction(
+
+                                                object :
+                                                    Transaction.Handler {
+
+                                                    override fun doTransaction(
+                                                        currentData:
+                                                            MutableData
+                                                    ):
+                                                        Transaction.Result {
+
+                                                        var value =
+                                                            currentData.getValue(
+                                                                Int::class.java
+                                                            )
+                                                                ?: 0
+
+                                                        if (
+                                                            value > 0
+                                                        ) {
+
+                                                            value--
+                                                        }
+
+                                                        currentData.value =
+                                                            value
+
+                                                        return Transaction
+                                                            .success(
+                                                                currentData
+                                                            )
+                                                    }
+
+                                                    override fun onComplete(
+                                                        error:
+                                                            DatabaseError?,
+                                                        committed:
+                                                            Boolean,
+                                                        snapshot:
+                                                            DataSnapshot?
+                                                    ) {}
+                                                }
+                                            )
+                                    }
 
                                     if (activar) {
 
@@ -499,6 +593,7 @@ fun TouchApp(
                                 ) {
 
                                     validarAtencion = false
+                                    pendingTouches = 0
 
                                     currentImage =
                                         R.drawable.feliz
@@ -511,6 +606,7 @@ fun TouchApp(
                                 ) {
 
                                     validarAtencion = false
+                                    pendingTouches = 0
 
                                     currentImage =
                                         R.drawable.me
@@ -543,8 +639,34 @@ fun TouchApp(
         }
     }
 
-    Scaffold { padding ->
+    var selectedTab by remember { mutableStateOf(0) }
 
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    icon = { Text("💜") },
+                    label = { Text("Conectar") },
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 }
+                )
+                NavigationBarItem(
+                    icon = { Text("🎮") },
+                    label = { Text("Juego") },
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 }
+                )
+            }
+        }
+    ) { padding ->
+
+        if (selectedTab == 1 && conectado) {
+            GameScreen(
+                roomCode = roomCode,
+                myId = myId,
+                onSalir = { selectedTab = 0 }
+            )
+        } else {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -657,6 +779,22 @@ fun TouchApp(
 
                             mensaje =
                                 "Conectados emocionalmente 💜"
+
+                            FirebaseMessaging.getInstance().token
+                                .addOnCompleteListener { task ->
+
+                                    if (task.isSuccessful) {
+
+                                        val token = task.result
+
+                                        FirebaseDatabase
+                                            .getInstance()
+                                            .getReference(
+                                                "tokens/$roomCode/$myId"
+                                            )
+                                            .setValue(token)
+                                    }
+                                }
                         }
                     }
                 ) {
@@ -891,8 +1029,173 @@ fun TouchApp(
 
             Spacer(
                 modifier =
-                    Modifier.height(20.dp)
+                    Modifier.height(10.dp)
             )
+
+            Text(
+                "⏰ Machape atrasado: $tardadoTouches"
+            )
+
+            Spacer(
+                modifier =
+                    Modifier.height(10.dp)
+            )
+
+            if (conectado) {
+
+                OutlinedButton(
+                    onClick = {
+
+                        // ⏰ Subir contador de tardado
+                        FirebaseDatabase
+                            .getInstance()
+                            .getReference(
+                                "tardado/$roomCode"
+                            )
+                            .runTransaction(
+
+                                object :
+                                    Transaction.Handler {
+
+                                    override fun doTransaction(
+                                        currentData:
+                                            MutableData
+                                    ):
+                                        Transaction.Result {
+
+                                        var value =
+                                            currentData.getValue(
+                                                Int::class.java
+                                            )
+                                                ?: 0
+
+                                        value++
+
+                                        // Si llega a 5, reiniciar a 0
+                                        if (value >= 5) {
+
+                                            value = 0
+                                        }
+
+                                        currentData.value =
+                                            value
+
+                                        return Transaction
+                                            .success(
+                                                currentData
+                                            )
+                                    }
+
+                                    override fun onComplete(
+                                        error:
+                                            DatabaseError?,
+                                        committed:
+                                            Boolean,
+                                        snapshot:
+                                            DataSnapshot?
+                                    ) {
+
+                                        tardadoTouches =
+                                            snapshot?.getValue(
+                                                Int::class.java
+                                            ) ?: 0
+
+                                        // Si se reinició a 0, restar 1 del contador
+                                        if (tardadoTouches == 0) {
+
+                                            FirebaseDatabase
+                                                .getInstance()
+                                                .getReference(
+                                                    "counter/$roomCode"
+                                                )
+                                                .runTransaction(
+
+                                                    object :
+                                                        Transaction.Handler {
+
+                                                        override fun doTransaction(
+                                                            currentData:
+                                                                MutableData
+                                                        ):
+                                                            Transaction.Result {
+
+                                                            var value =
+                                                                currentData.getValue(
+                                                                    Int::class.java
+                                                                )
+                                                                    ?: 0
+
+                                                            if (value > 0) {
+
+                                                                value--
+                                                            }
+
+                                                            currentData.value =
+                                                                value
+
+                                                            return Transaction
+                                                                .success(
+                                                                    currentData
+                                                                )
+                                                        }
+
+                                                        override fun onComplete(
+                                                            error:
+                                                                DatabaseError?,
+                                                            committed:
+                                                                Boolean,
+                                                            snapshot:
+                                                                DataSnapshot?
+                                                        ) {}
+                                                    }
+                                                )
+                                        }
+                                    }
+                                }
+                            )
+                    },
+
+                    modifier =
+                        Modifier
+                            .width(240.dp)
+                            .height(48.dp)
+                ) {
+
+                    Text(
+                        "⏰ Machape atrasado"
+                    )
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(10.dp)
+                )
+
+                // 🔄 Cambiar sala
+                TextButton(
+                    onClick = {
+                        conectado = false
+                        roomCode = ""
+                        validTouches = 0
+                        tardadoTouches = 0
+                        pendingTouches = 0
+                        validarAtencion = false
+                        llorando = false
+                        esperandoAtencion = false
+                        currentImage = R.drawable.me
+                        mensaje = "Esperando atención..."
+                    }
+                ) {
+                    Text(
+                        "🔄 Cambiar sala"
+                    )
+                }
+
+                Spacer(
+                    modifier =
+                        Modifier.height(10.dp)
+                )
+            }
 
             Row(
                 modifier =
@@ -922,6 +1225,7 @@ fun TouchApp(
                     }
                 )
             }
+        }
         }
     }
 }

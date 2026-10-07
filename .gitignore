@@ -13,3 +13,10 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# Secretos: nunca deben entrar al repositorio
+serviceAccountKey.json
+**/serviceAccountKey.json
+*.jks
+*.keystore
+google-services.json

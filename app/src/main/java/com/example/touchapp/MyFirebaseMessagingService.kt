@@ -26,10 +26,12 @@ class MyFirebaseMessagingService :
 
         val title =
             message.data["title"]
+                ?: message.notification?.title
                 ?: "Atención 🥺"
 
         val body =
             message.data["body"]
+                ?: message.notification?.body
                 ?: "Tu machape te necesita 🦝"
 
         showNotification(title, body)
