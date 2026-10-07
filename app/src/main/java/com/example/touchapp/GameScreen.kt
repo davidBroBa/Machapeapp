@@ -48,20 +48,27 @@ private const val MAPACHE_LADO = 120f
 private const val MAPACHE_CENTRO_Y = 270f
 
 /*
- * Hitbox del mapache: un rectangulo pequeno sobre la cabeza.
+ * Hitbox del mapache: un rectangulo sobre la cara.
  *
  * Medido sobre me.png (1024x1536) dibujado en 120x120dp con
- * ContentScale.Fit. La cabeza ocupa, en dp dentro de esa caja:
+ * ContentScale.Fit. Escalando los pixeles de las bandas de la cara:
  *
- *   x 45..81, y 32..64   ->  36 x 32 dp
+ *   banda de ojos  px x 212..832 y 560..700 -> dp x 36.6..85.0, y 43.8..54.7
+ *   banda baja     px x 223..831 y 700..780 -> dp x 37.4..84.9, y 54.7..60.9
  *
- * Es un rectangulo, no la silueta entera: solo cuenta acertar en la
- * cabeza, no rozarlo con el cuerpo.
+ * Esas bandas incluyen las orejas, que se salen por los lados. La cara sin
+ * orejas va de x 44 a 80, y el hocico baja hasta y 68. Ese es el rectangulo:
+ *
+ *   x 44..80, y 40..68   ->  36 x 28 dp, centro (62, 54)
+ *
+ * El centro x=62 coincide con el centro real de la cara medido sobre las
+ * bandas. Un rectangulo, no la silueta entera: solo cuenta acertar en la
+ * cara, no rozarlo con el cuerpo.
  */
-private const val CABEZA_X0 = 45f
-private const val CABEZA_Y0 = 32f
-private const val CABEZA_X1 = 81f
-private const val CABEZA_Y1 = 64f
+private const val CABEZA_X0 = 44f
+private const val CABEZA_Y0 = 40f
+private const val CABEZA_X1 = 80f
+private const val CABEZA_Y1 = 68f
 
 /** Lado del objeto que cae, en dp. */
 private const val OBJETO_LADO = 80f

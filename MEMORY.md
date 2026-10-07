@@ -21,6 +21,8 @@
 - **Servidor de notificaciones:** `TIPOS_REENVIO` declara los eventos de `/touch/{roomCode}`. Un `if` con un solo tipo (`need_attention`) descartaba en silencio `bored_attention`. Al añadir un evento nuevo hay que registrarlo **en el servidor**, no solo en el cliente.
 - **Un solo origen de verdad para la posición:** dibujo y colisión deben leer la misma constante (`MAPACHE_CENTRO_Y`). Con dos cálculos paralelos la hitbox quedó 60dp por encima del mapache sin que nada lo delatara.
 - **Medir la silueta, no estimar:** `PIL` + `getbbox()` sobre el canal alfa da los límites reales. Luego renderizar la imagen con el rectángulo encima para confirmarlo a la vista.
+- **Varias iteraciones "a ojo" se acumulan en error:** la hitbox de la cabeza se afinó tres veces eligiendo el rectángulo sobre un render, y cada vez arrastró el error anterior (primino las orejas, luego se salió a la derecha). Lo que funcionó: renderizar con **rejilla de 10dp** para tener una escala legible, y medir por bandas de píxeles con `getbbox()` para sacar el centro real. La rejilla es lo que hizo visible el desfase.
+- **Una banda de la silueta no es una zona anatómica:** medir "la cara" como el bbox de las filas de los ojos incluye las orejas, que se salen por los lados. Hay que decidir la zona por lo que el jugador apunta, no por lo que la silueta ocupa.
 
 ## Aprendizaje y Errores a Evitar
 - **UNIDADES:** `screenHeightDp.dp.toPx()` da px; aplicar `.toDp()` encima divide mal. Usar `screenHeightDp.toFloat()` y `dp` directo.

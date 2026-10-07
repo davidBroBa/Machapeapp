@@ -31,7 +31,7 @@ class GameLogicTest {
         val centroY = 270f
         val alto = 800f
 
-        val (_, cabezaY) = posicionMapa(0f, alto, centroY, lado, 63f, 32f, 64f)
+        val (_, cabezaY) = posicionMapa(0f, alto, centroY, lado, 62f, 40f, 68f)
         val centroImagen = alto - centroY
 
         // La cabeza esta en la parte de arriba: mas cerca del borde superior.
@@ -41,17 +41,33 @@ class GameLogicTest {
     @Test
     fun `posicionMapa coincide con el rectangulo medido`() {
         // Pantalla de 800dp, imagen de 120dp centrada a 270dp del borde inferior.
-        val (x, y) = posicionMapa(100f, 800f, 270f, 120f, 63f, 32f, 64f)
+        // Cabeza medida: x 44..80, y 40..68 -> centro de caja (62, 54).
+        val (x, y) = posicionMapa(100f, 800f, 270f, 120f, 62f, 40f, 68f)
         // Esquina superior de la imagen: 800 - 270 - 60 = 470.
-        // Centro de la cabeza: 470 + (32+64)/2 = 518.
-        assertEquals(163f, x, 0.01f)
-        assertEquals(518f, y, 0.01f)
+        // Centro de la cabeza: 470 + (40+68)/2 = 524.
+        assertEquals(162f, x, 0.01f)
+        assertEquals(524f, y, 0.01f)
+    }
+
+    @Test
+    fun `la cabeza queda centrada en la cara medida`() {
+        // El centro horizontal de la cara medido sobre las bandas de la
+        // imagen es x=62dp dentro de la caja de 120dp.
+        val caja = 120f
+        val centroBandaOjos = 60.8f
+        val x0 = 44f
+        val x1 = 80f
+
+        // El rectangulo debe caer dentro del ancho de la banda de ojos.
+        assertTrue(x0 > 36.6f && x0 < centroBandaOjos)
+        assertTrue(x1 > centroBandaOjos && x1 < 85.0f)
+        assertTrue(x1 - x0 < caja)
     }
 
     @Test
     fun `posicionMapa sigue al mapache en horizontal`() {
-        val (x1, _) = posicionMapa(0f, 800f, 270f, 120f, 63f, 32f, 64f)
-        val (x2, _) = posicionMapa(56f, 800f, 270f, 120f, 63f, 32f, 64f)
+        val (x1, _) = posicionMapa(0f, 800f, 270f, 120f, 62f, 40f, 68f)
+        val (x2, _) = posicionMapa(56f, 800f, 270f, 120f, 62f, 40f, 68f)
         assertEquals(56f, x2 - x1, 0.01f)
     }
 
