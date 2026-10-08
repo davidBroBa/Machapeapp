@@ -78,6 +78,17 @@ fun posicionMapa(
 }
 
 /**
+ * Esquina superior izquierda de la imagen de un objeto, para dibujarla centrada.
+ *
+ * `Modifier.offset` coloca la esquina superior izquierda, pero la colision
+ * usa el centro del objeto. Sin esta conversion el objeto se dibuja media
+ * caja a la izquierda y media caja por encima de donde colisiona.
+ */
+fun esquinaObjeto(centro: Float, lado: Float): Float {
+    return centro - lado / 2f
+}
+
+/**
  * Colisión entre un rectángulo (la cabeza del mapache) y una elipse (un objeto).
  *
  * Se mide la distancia desde el centro del objeto hasta el punto del
@@ -175,15 +186,23 @@ fun calcularVelocidad(puntuacion: Int): Float {
 }
 
 /**
+ * Puntuacion a la que se dispara la notificacion "Machape aburrido".
+ *
+ * Temporalmente a 10 para poder comprobar la cadena completa sin tener que
+ * jugar 50 puntos. Subir a 50 cuando la notificacion este verificada.
+ */
+const val PUNTOS_NOTIFICACION_ABURRIDO = 10
+
+/**
  * Verifica si se debe enviar la notificación "Machape aburrido".
- * Solo se envía una vez por partida, al llegar a 50 puntos.
+ * Solo se envía una vez por partida, al llegar al umbral.
  * RF-9, RF-10
  */
 fun verificarNotificacionAburrido(
     puntuacion: Int,
     notificacionEnviada: Boolean
 ): Boolean {
-    return puntuacion >= 50 && !notificacionEnviada
+    return puntuacion >= PUNTOS_NOTIFICACION_ABURRIDO && !notificacionEnviada
 }
 
 /**

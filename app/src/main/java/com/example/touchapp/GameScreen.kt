@@ -3,6 +3,7 @@ package com.example.touchapp
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -14,8 +15,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -69,6 +74,13 @@ private const val CABEZA_X0 = 44f
 private const val CABEZA_Y0 = 40f
 private const val CABEZA_X1 = 80f
 private const val CABEZA_Y1 = 68f
+
+/**
+ * Pinta el rectangulo de la hitbox sobre la pantalla.
+ * Sirve para comprobar que el rectangulo coincide con la cara: se enciende
+ * a true cuando hay que ajustar, y se apaga para la entrega.
+ */
+private const val DEBUG_VER_HITBOX = false
 
 /** Lado del objeto que cae, en dp. */
 private const val OBJETO_LADO = 80f
@@ -292,6 +304,10 @@ fun GameScreen(
 
                 MapacheEnPantalla(mapacheX, altoPantalla)
 
+                if (DEBUG_VER_HITBOX) {
+                    VerHitbox(mapacheX, altoPantalla)
+                }
+
                 MarcadorSuperior(puntuacion, vidas, mejorPuntuacion)
 
                 BotonPausa(
@@ -333,7 +349,15 @@ fun GameScreen(
     }
 }
 
-/** Dibuja los objetos que caen usando la imagen de su tipo. */
+/**
+ * Dibuja los objetos que caen usando la imagen de su tipo.
+ *
+ * `objeto.x` y `objeto.y` son el CENTRO del objeto, que es donde la
+ * colision los mira. Modifier.offset coloca la esquina superior izquierda,
+ * asi que hay que restar media caja para que se dibujen centrados. Sin esa
+ * resta el objeto se dibujaba 40dp a la izquierda y 40dp por encima de
+ * donde colisionaba, y se comia cosas que no tocaba.
+ */
 @Composable
 private fun ObjetosEnPantalla(objetos: List<Objeto>) {
     objetos.forEach { objeto ->
@@ -348,7 +372,10 @@ private fun ObjetosEnPantalla(objetos: List<Objeto>) {
             contentDescription = null,
             modifier = Modifier
                 .size(OBJETO_LADO.dp)
-                .offset(x = objeto.x.dp, y = objeto.y.dp)
+                .offset(
+                    x = esquinaObjeto(objeto.x, OBJETO_LADO).dp,
+                    y = esquinaObjeto(objeto.y, OBJETO_LADO).dp
+                )
         )
     }
 }
@@ -371,6 +398,42 @@ private fun BoxScope.MapacheEnPantalla(mapacheX: Float, altoPantalla: Float) {
                 y = (altoPantalla - MAPACHE_CENTRO_Y - MAPACHE_LADO / 2f).dp
             )
     )
+}
+
+/** Pinta la hitbox de la cara para poder ver si coincide con la imagen. */
+@Composable
+private fun BoxScope.VerHitbox(mapacheX: Float, altoPantalla: Float) {
+    val (centroX, centroY) = posicionMapa(
+        mapacheX = mapacheX,
+        altoPantalla = altoPantalla,
+        centroY = MAPACHE_CENTRO_Y,
+        lado = MAPACHE_LADO,
+        x0 = (CABEZA_X0 + CABEZA_X1) / 2f,
+        y0 = CABEZA_Y0,
+        y1 = CABEZA_Y1
+    )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(1f)
+    ) {
+        // El DrawScope trabaja en pixeles, y posicionMapa devuelve dp.
+        val semiX = (CABEZA_X1 - CABEZA_X0) / 2f
+        val semiY = (CABEZA_Y1 - CABEZA_Y0) / 2f
+
+        drawRect(
+            color = Color.Red,
+            topLeft = Offset((centroX - semiX).dp.toPx(), (centroY - semiY).dp.toPx()),
+            size = Size((semiX * 2f).dp.toPx(), (semiY * 2f).dp.toPx()),
+            style = Stroke(width = 3.dp.toPx())
+        )
+        drawCircle(
+            color = Color.Yellow,
+            radius = 5.dp.toPx(),
+            center = Offset(centroX.dp.toPx(), centroY.dp.toPx())
+        )
+    }
 }
 
 /** Puntos, mejor marca y vidas en la parte superior. */

@@ -18,6 +18,9 @@
 | GameLogic.kt con funciones puras | Testeable sin emulador |
 | Sonidos envueltos en clase `SonidosJuego` | Evita `SoundPool.release()` doble |
 
+- **El servidor de notificaciones NO puede depender de `nohup &`:** al cerrar la sesión SSH el proceso muerde (se comprobó: `ps` vacío y log congelado en la 01:31 mientras el usuario jugaba a las 19:38). Va como **servicio systemd de usuario** en `~/.config/systemd/user/machape-notificaciones.service` con `Restart=always`. Estado: `systemctl --user status machape-notificaciones`.
+- **`on('value')` reenvía el estado viejo al arrancar:** la primera emisión de `value` es el snapshot que ya había, no un evento nuevo. Sin descartarla, cada reinicio reenvía la última notificación a todos. Se ignora con un flag `primero`.
+- **`Modifier.offset` coloca la esquina superior izquierda, no el centro:** los objetos se dibujaban con `offset(x = objeto.x)` mientras la colisiónMiraba `objeto.x` como centro. El sushi se dibujaba 40dp arriba-izquierda de donde colisionaba, de ahí "se come donde no hay nada" y "no come donde está el mapache". Todo lo que se guarde como centro y se dibuje con `offset` necesita restar media caja: helper `esquinaObjeto(centro, lado)`.
 - **Servidor de notificaciones:** `TIPOS_REENVIO` declara los eventos de `/touch/{roomCode}`. Un `if` con un solo tipo (`need_attention`) descartaba en silencio `bored_attention`. Al añadir un evento nuevo hay que registrarlo **en el servidor**, no solo en el cliente.
 - **Un solo origen de verdad para la posición:** dibujo y colisión deben leer la misma constante (`MAPACHE_CENTRO_Y`). Con dos cálculos paralelos la hitbox quedó 60dp por encima del mapache sin que nada lo delatara.
 - **Medir la silueta, no estimar:** `PIL` + `getbbox()` sobre el canal alfa da los límites reales. Luego renderizar la imagen con el rectángulo encima para confirmarlo a la vista.

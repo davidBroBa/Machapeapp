@@ -71,6 +71,21 @@ class GameLogicTest {
         assertEquals(56f, x2 - x1, 0.01f)
     }
 
+    // El objeto se dibuja centrado sobre la posicion que usa la colision.
+    @Test
+    fun `esquinaObjeto descuenta media caja`() {
+        assertEquals(60f, esquinaObjeto(100f, 80f), 0.01f)
+    }
+
+    @Test
+    fun `esquinaObjeto mas centro coincide con el centro del objeto`() {
+        val centro = 250f
+        val lado = 80f
+        val esquina = esquinaObjeto(centro, lado)
+        // Sumando media caja se vuelve al centro.
+        assertEquals(centro, esquina + lado / 2f, 0.01f)
+    }
+
     // RF-2: Colisión rectángulo (cabeza) contra elipse (objeto)
     // Cabeza del mapache: 36 x 32 dp -> semiejes 18 x 16.
     // Comida: 48.1 x 43.4 dp -> semiejes 24 x 22.
@@ -218,18 +233,23 @@ class GameLogicTest {
 
     // RF-9, RF-10: Notificación aburrido
     @Test
-    fun `verificarNotificacionAburrido es true en 50 puntos sin enviar`() {
-        assertTrue(verificarNotificacionAburrido(50, false))
+    fun `verificarNotificacionAburrido es true en el umbral sin enviar`() {
+        assertTrue(verificarNotificacionAburrido(PUNTOS_NOTIFICACION_ABURRIDO, false))
     }
 
     @Test
     fun `verificarNotificacionAburrido es false si ya fue enviada`() {
-        assertFalse(verificarNotificacionAburrido(50, true))
+        assertFalse(verificarNotificacionAburrido(PUNTOS_NOTIFICACION_ABURRIDO, true))
     }
 
     @Test
-    fun `verificarNotificacionAburrido es false antes de 50 puntos`() {
-        assertFalse(verificarNotificacionAburrido(49, false))
+    fun `verificarNotificacionAburrido es false antes del umbral`() {
+        assertFalse(verificarNotificacionAburrido(PUNTOS_NOTIFICACION_ABURRIDO - 1, false))
+    }
+
+    @Test
+    fun `verificarNotificacionAburrido sigue valiendo con 50 puntos`() {
+        assertTrue(verificarNotificacionAburrido(50, false))
     }
 
     // RF-12: Reiniciar partida
