@@ -33,12 +33,50 @@ import kotlin.random.Random
 data class Objeto(
     val x: Float,
     val y: Float,
-    val tipo: TipoObjeto
+    val tipo: TipoObjeto,
+    val imagen: Int
 )
 
 enum class TipoObjeto {
     COMIDA, BASURA, CORAZON
 }
+
+/**
+ * Imagenes que caen y a que pertenecen.
+ *
+ *   COMIDA   sushi, lasana, helado   -> suman punto
+ *   BASURA   ok, gorra, pesa, polilla -> quitan una vida
+ *   CORAZON  corazon                  -> recupera una vida
+ */
+private val IMAGENES_COMIDA =
+    listOf(R.drawable.sushi, R.drawable.lasana, R.drawable.helado)
+
+private val IMAGENES_BASURA =
+    listOf(R.drawable.ok, R.drawable.gorra, R.drawable.pesa, R.drawable.polilla)
+
+private val IMAGENES_CORAZON = listOf(R.drawable.corazon)
+
+/**
+ * Semiejes de la hitbox de cada imagen, en dp.
+ *
+ * Medidos sobre los pixeles opacos de cada PNG (alfa >= 24) y escalados a
+ * la caja de 80dp con ContentScale.Fit. No se puede usar un valor comun:
+ * el helado es 26x60dp (alto y estrecho) y la pesa 64x34dp (ancho y bajo).
+ *
+ *   sushi     48.1 x 43.4   helado    26.2 x 60.5   pesa      64.1 x 34.1
+ *   lasana    47.7 x 43.4   ok        56.4 x 49.8   polilla   64.1 x 47.8
+ *   gorra     60.5 x 41.7   corazon   53.4 x 43.7
+ */
+private val HITBOX_POR_IMAGEN: Map<Int, Pair<Float, Float>> = mapOf(
+    R.drawable.sushi to (24.1f to 21.7f),
+    R.drawable.lasana to (23.8f to 21.7f),
+    R.drawable.helado to (13.1f to 30.3f),
+    R.drawable.ok to (28.2f to 24.9f),
+    R.drawable.gorra to (30.3f to 20.9f),
+    R.drawable.pesa to (32.0f to 17.0f),
+    R.drawable.polilla to (32.0f to 23.9f),
+    R.drawable.corazon to (26.7f to 21.8f)
+)
 
 /** Lado de la imagen del mapache, en dp. */
 private const val MAPACHE_LADO = 120f
@@ -84,24 +122,6 @@ private const val DEBUG_VER_HITBOX = false
 
 /** Lado del objeto que cae, en dp. */
 private const val OBJETO_LADO = 80f
-
-/*
- * Semiejes de los objetos, en dp. Medidos sobre los pixeles opacos de
- * cada PNG (umbral alfa >= 24) y escalados al tamano en que se dibujan.
- * Las siluetas son mas anchas que altas, por eso son elipses.
- *
- *   sushi.png    1024x1024 -> 80x80dp, silueta 616x555px -> 48.1 x 43.4dp
- *   ok.png       1024x1024 -> 80x80dp, silueta 722x638px -> 56.4 x 49.8dp
- *   corazon.png  1024x1024 -> 80x80dp, silueta 684x559px -> 53.4 x 43.7dp
- */
-private const val COMIDA_RADIO_X = 24f
-private const val COMIDA_RADIO_Y = 22f
-
-private const val BASURA_RADIO_X = 28f
-private const val BASURA_RADIO_Y = 25f
-
-private const val CORAZON_RADIO_X = 27f
-private const val CORAZON_RADIO_Y = 22f
 
 /** Separacion minima entre objetos al generarlos, en dp. */
 private const val SEPARACION_MINIMA = 120f
@@ -194,6 +214,13 @@ fun GameScreen(
                     else -> TipoObjeto.CORAZON
                 }
 
+                val imagenes = when (tipo) {
+                    TipoObjeto.COMIDA -> IMAGENES_COMIDA
+                    TipoObjeto.BASURA -> IMAGENES_BASURA
+                    TipoObjeto.CORAZON -> IMAGENES_CORAZON
+                }
+                val imagen = imagenes.random()
+
                 val centroX = MAPACHE_LADO / 2f +
                     Random.nextFloat() * (anchoPantalla - MAPACHE_LADO)
 
@@ -203,7 +230,8 @@ fun GameScreen(
                 }
 
                 if (sinChoque) {
-                    objetos = objetos + Objeto(x = centroX, y = -OBJETO_LADO, tipo = tipo)
+                    objetos = objetos +
+                        Objeto(x = centroX, y = -OBJETO_LADO, tipo = tipo, imagen = imagen)
                 }
             }
 
@@ -223,11 +251,8 @@ fun GameScreen(
             val cabezaSemiY = (CABEZA_Y1 - CABEZA_Y0) / 2f
 
             val colisionados = objetos.filter { objeto ->
-                val (objetoRx, objetoRy) = when (objeto.tipo) {
-                    TipoObjeto.COMIDA -> COMIDA_RADIO_X to COMIDA_RADIO_Y
-                    TipoObjeto.BASURA -> BASURA_RADIO_X to BASURA_RADIO_Y
-                    TipoObjeto.CORAZON -> CORAZON_RADIO_X to CORAZON_RADIO_Y
-                }
+                val (objetoRx, objetoRy) = HITBOX_POR_IMAGEN[objeto.imagen]
+                    ?: (OBJETO_LADO / 4f to OBJETO_LADO / 4f)
 
                 colisionRectElipse(
                     dx = objeto.x - cabezaCentroX,
@@ -361,14 +386,8 @@ fun GameScreen(
 @Composable
 private fun ObjetosEnPantalla(objetos: List<Objeto>) {
     objetos.forEach { objeto ->
-        val imagen = when (objeto.tipo) {
-            TipoObjeto.COMIDA -> R.drawable.sushi
-            TipoObjeto.BASURA -> R.drawable.ok
-            TipoObjeto.CORAZON -> R.drawable.corazon
-        }
-
         Image(
-            painter = painterResource(id = imagen),
+            painter = painterResource(id = objeto.imagen),
             contentDescription = null,
             modifier = Modifier
                 .size(OBJETO_LADO.dp)
@@ -436,31 +455,42 @@ private fun BoxScope.VerHitbox(mapacheX: Float, altoPantalla: Float) {
     }
 }
 
-/** Puntos, mejor marca y vidas en la parte superior. */
+/**
+ * Marcador: puntos, mejor marca y vidas.
+ *
+ * Va en columna pegada a la izquierda en vez de repartido en una fila: con
+ * tres textos en SpaceBetween, "Vidas" caia justo debajo del boton de
+ * pausa y no se veia en pantallas anchas. La zona de arriba a la derecha
+ * queda libre para el boton.
+ *
+ * El statusBarsPadding no es cosmetico: sin el, "Puntos" queda pegado al
+ * reloj de la barra de estado.
+ */
 @Composable
-private fun MarcadorSuperior(puntuacion: Int, vidas: Int, mejorPuntuacion: Int) {
-    Row(
+private fun BoxScope.MarcadorSuperior(
+    puntuacion: Int,
+    vidas: Int,
+    mejorPuntuacion: Int
+) {
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+            .align(Alignment.TopStart)
+            .statusBarsPadding()
+            .padding(start = 16.dp, top = 8.dp, end = 140.dp)
     ) {
         Text(
             text = "Puntos: $puntuacion",
             color = Color.White,
             style = MaterialTheme.typography.titleLarge
         )
-
         Text(
             text = "Mejor: $mejorPuntuacion",
             color = Color(0xFFFFF3B0),
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleSmall
         )
-
         Text(
             text = "Vidas: $vidas",
-            color = Color.White,
+            color = if (vidas <= 1) Color(0xFFFF8A80) else Color.White,
             style = MaterialTheme.typography.titleLarge
         )
     }

@@ -31,13 +31,16 @@ atrapar comida con el mapache.
 ### Pestaña Juego (MachapeJuego)
 
 - Objetos caen y hay que atraparlos con el mapache.
-- **Comida** (sushi) suma punto.
-- **Basura** (el "OK") quita una de las 3 vidas.
-- **Corazón** recupera una vida.
+- **Comida** — sushi, lasaña, helado: suman punto.
+- **Basura** — el "OK", gorra, pesa, polilla: quitan una de las 3 vidas.
+- **Corazón** — recupera una vida.
 - La **hitbox es un rectángulo sobre la cara** del mapache, no la silueta
   entera: hay que acertar en la cabeza, no rozar el cuerpo.
-- Al llegar a `PUNTOS_NOTIFICACION_ABURRIDO` puntos se avisa a la otra
-  persona con **"Machape aburrido"** (hoy 10, subir a 50).
+- Cada objeto lleva **su propia hitbox**, porque las siluetas son muy
+  distintas: el helado es 26×60 dp (alto y estrecho) y la pesa 64×34 dp.
+- La dificultad **sube por escalones** en 20, 30, 40 y 50 puntos, y ahí se
+  queda: es el tope, para que el juego no llegue a ser imposible.
+- Al llegar a 50 puntos se avisa a la otra persona con **"Machape aburrido"**.
 - Pantalla de inicio con **Empezar**, botón de **Pausa**, y al perder las
   3 vidas un diálogo que ofrece **reintentar** o **salir**.
 - **Mejor marca** guardada en el dispositivo.
@@ -54,7 +57,7 @@ atrapar comida con el mapache.
 | minSdk / targetSdk / compileSdk | 24 / 35 / 35 |
 | Firebase | Auth anónima, Realtime Database, Cloud Messaging (BOM 34.12.0) |
 | Backend de notificaciones | Node.js 22 + `firebase-admin` 13.x en servidor propio |
-| Tests | JUnit 4 (43 tests) |
+| Tests | JUnit 4 (47 tests) |
 
 `applicationId`: `com.example.touchapp` · proyecto Firebase: `touchapp-a6cf4`
 
@@ -70,7 +73,7 @@ TouchApp/
 │   ├── GameLogic.kt               Lógica pura del juego (sin UI, testeable)
 │   ├── MyFirebaseMessagingService.kt  Recibe push con la app cerrada
 │   └── ui/theme/                  Tema Material 3
-├── app/src/test/                  GameLogicTest: 43 tests
+├── app/src/test/                  GameLogicTest: 47 tests
 ├── app/src/main/res/
 │   ├── drawable/                  Mapache y objetos del juego
 │   └── raw/                       Sonidos (comer, error, vida, gameover)
@@ -91,7 +94,7 @@ funciones puras sin Compose ni Firebase, todas cubiertas por tests.
 
 ```powershell
 .\gradlew assembleDebug              # compila el APK
-.\gradlew testDebugUnitTest          # 43 tests de la lógica del juego
+.\gradlew testDebugUnitTest          # 47 tests de la lógica del juego
 .\gradlew installDebug               # instala en el dispositivo conectado
 ```
 
@@ -228,6 +231,51 @@ mapache.
 
 ---
 
+## Dificultad
+
+Sube por tramos, no con una rampa recta. En `GameLogic.kt`:
+
+```kotlin
+private val ESCALONES_DIFICULTAD = floatArrayOf(0f, 20f, 30f, 40f, 50f)
+private val VELOCIDADES_TRAMO   = floatArrayOf(2.2f, 4.4f, 5.4f, 6.4f, 7.4f)
+```
+
+| Puntos | Velocidad (dp/frame) |
+|---|---|
+| 0 | 2.2 |
+| 20 | 4.4 |
+| 30 | 5.4 |
+| 40 | 6.4 |
+| 50 | 7.4 ← tope, no sube más |
+
+`velocidadCaida()` interpola dentro de cada tramo y a partir de 50 devuelve
+siempre 7.4. El tope es también el umbral de la notificación "Machape
+aburrido": cuando ya no queda dificultad que ganar, se avisa.
+
+---
+
+## Objetos que caen
+
+Cada objeto lleva **su propia hitbox**, medida sobre los píxeles opacos de
+su PNG (alfa ≥ 24) y escalada a la caja de 80 dp. No se puede compartir un
+radio por tipo:
+
+| Imagen | Tipo | Silueta | Semiejes |
+|---|---|---|---|
+| `sushi` | comida | 48.1 × 43.4 dp | 24.1 × 21.7 |
+| `lasana` | comida | 47.7 × 43.4 dp | 23.8 × 21.7 |
+| `helado` | comida | 26.2 × 60.5 dp | 13.1 × 30.3 |
+| `ok` | basura | 56.4 × 49.8 dp | 28.2 × 24.9 |
+| `gorra` | basura | 60.5 × 41.7 dp | 30.3 × 20.9 |
+| `pesa` | basura | 64.1 × 34.1 dp | 32.0 × 17.0 |
+| `polilla` | basura | 64.1 × 47.8 dp | 32.0 × 23.9 |
+| `corazon` | corazón | 53.4 × 43.7 dp | 26.7 × 21.8 |
+
+El helado es alto y estrecho y la pesa ancha y baja: con un radio común,
+una colisionaría donde la otra no.
+
+---
+
 ## Pendiente
 
 Cosas que **no están terminadas**, para no darlas por buenas:
@@ -239,11 +287,11 @@ Cosas que **no están terminadas**, para no darlas por buenas:
       no se despliega (requiere plan Blaze). Se puede borrar o dejar como
       referencia.
 - [ ] **No hay SDD ni modelo de amenazas** (`docs/` no existe).
-- [ ] **Umbral de notificación en 10**, pendiente de subir a 50 cuando se
-      confirme que el push llega.
-- [ ] **Imágenes sin usar**: `lasana`, `helado`, `gorra`, `pesa` y
-      `polilla` están en `drawable` pero el juego solo usa `sushi`, `ok` y
-      `corazon`.
+- [ ] **Notificación "Machape aburrido" sin verificar en físico.** El umbral
+      ya está en 50 y la parte cliente está probada, pero falta confirmar
+      que el push llega con dos Galaxy reales.
+- [ ] **Sonido solo para sushi/ok/corazón.** Las cinco imágenes nuevas
+      reutilizan esos sonidos hasta que se graben los suyos.
 - [ ] Sin tests instrumentados: la UI solo se verifica a mano en emulador.
 - [ ] Sin ProGuard en release (`isMinifyEnabled = false`).
 

@@ -127,23 +127,52 @@ class GameLogicTest {
         assertFalse(colisionRectElipse(0f, 0f, 18f, 16f, 0f, 22f))
     }
 
-    // Velocidad de caída
+    // Velocidad de caída por tramos
     @Test
     fun `velocidadCaida arranca suave`() {
         assertEquals(2.2f, velocidadCaida(0), 0.001f)
     }
 
     @Test
-    fun `velocidadCaida crece con la puntuacion`() {
-        assertTrue(velocidadCaida(20) > velocidadCaida(0))
-        assertTrue(velocidadCaida(50) > velocidadCaida(20))
+    fun `velocidadCaida respeta los escalones de 20 30 40 y 50`() {
+        assertEquals(4.4f, velocidadCaida(20), 0.001f)
+        assertEquals(5.4f, velocidadCaida(30), 0.001f)
+        assertEquals(6.4f, velocidadCaida(40), 0.001f)
+        assertEquals(7.4f, velocidadCaida(50), 0.001f)
     }
 
     @Test
-    fun `velocidadCaida tiene techo y no lo pasa`() {
+    fun `velocidadCaida crece dentro de cada tramo`() {
+        assertTrue(velocidadCaida(10) > velocidadCaida(0))
+        assertTrue(velocidadCaida(25) > velocidadCaida(20))
+        assertTrue(velocidadCaida(35) > velocidadCaida(30))
+        assertTrue(velocidadCaida(45) > velocidadCaida(40))
+    }
+
+    @Test
+    fun `velocidadCaida no baja al cruzar de tramo`() {
+        // Justo despues de cada escalon tiene que seguir subiendo.
+        assertTrue(velocidadCaida(21) > velocidadCaida(20))
+        assertTrue(velocidadCaida(31) > velocidadCaida(30))
+        assertTrue(velocidadCaida(41) > velocidadCaida(40))
+    }
+
+    @Test
+    fun `velocidadCaida tiene tope en 50 y no lo pasa`() {
         val techo = velocidadCaida(50)
+        assertEquals(techo, velocidadCaida(60), 0.001f)
         assertEquals(techo, velocidadCaida(200), 0.001f)
-        assertEquals(8.5f, techo, 0.001f)
+        assertEquals(7.4f, techo, 0.001f)
+    }
+
+    @Test
+    fun `velocidadCaida es monotona creciente`() {
+        var anterior = velocidadCaida(0)
+        for (p in 1..60) {
+            val actual = velocidadCaida(p)
+            assertTrue("$p: $actual <= $anterior", actual >= anterior)
+            anterior = actual
+        }
     }
 
     // solapanRect
@@ -249,6 +278,13 @@ class GameLogicTest {
 
     @Test
     fun `verificarNotificacionAburrido sigue valiendo con 50 puntos`() {
+        assertTrue(verificarNotificacionAburrido(50, false))
+    }
+
+    @Test
+    fun `el umbral de aburrido es 50 puntos`() {
+        assertEquals(50, PUNTOS_NOTIFICACION_ABURRIDO)
+        assertFalse(verificarNotificacionAburrido(49, false))
         assertTrue(verificarNotificacionAburrido(50, false))
     }
 

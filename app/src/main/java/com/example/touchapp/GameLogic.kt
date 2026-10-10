@@ -39,17 +39,42 @@ fun moverMapache(
 }
 
 /**
- * Velocidad de caida de los objetos, en dp por frame a 60 FPS.
+ * Puntos en los que termina cada tramo de dificultad.
+ * El último es el tope: a partir de ahí la velocidad ya no sube.
+ */
+private val ESCALONES_DIFICULTAD = floatArrayOf(0f, 20f, 30f, 40f, 50f)
+
+/**
+ * Velocidad de caída en dp por frame a 60 FPS, en cada escalón.
+ * Con la pantalla del emulador, 2.2 dp/frame tarda unos 6 s en cruzar y
+ * 7.4 dp/frame unos 1.8 s.
+ */
+private val VELOCIDADES_TRAMO = floatArrayOf(2.2f, 4.4f, 5.4f, 6.4f, 7.4f)
+
+/**
+ * Velocidad de caída de los objetos, en dp por frame a 60 FPS.
  *
- * Rampa suave y con techo: el juego tiene que volverse mas dificil sin
- * llegar a ser imposible. A 0 puntos un objeto tarda unos 6 s en cruzar
- * la pantalla; en el techo, unos 1.6 s.
+ * Sube por tramos en vez de con una rampa recta: de 0 a 20 puntos va
+ * suave, y a partir de 20 cada 10 puntos hay un escalón. Desde 50 puntos
+ * se queda en el tope, para que el juego no llegue a ser imposible.
  */
 fun velocidadCaida(puntuacion: Int): Float {
-    val base = 2.2f
-    val incremento = 0.16f
-    val techo = 8.5f
-    return (base + puntuacion * incremento).coerceAtMost(techo)
+    val ultimo = ESCALONES_DIFICULTAD.lastIndex
+
+    if (puntuacion <= 0f) return VELOCIDADES_TRAMO[0]
+    if (puntuacion >= ESCALONES_DIFICULTAD[ultimo]) return VELOCIDADES_TRAMO[ultimo]
+
+    for (i in 0 until ultimo) {
+        if (puntuacion < ESCALONES_DIFICULTAD[i + 1]) {
+            val desde = ESCALONES_DIFICULTAD[i]
+            val hasta = ESCALONES_DIFICULTAD[i + 1]
+            val t = (puntuacion - desde) / (hasta - desde)
+            return VELOCIDADES_TRAMO[i] +
+                t * (VELOCIDADES_TRAMO[i + 1] - VELOCIDADES_TRAMO[i])
+        }
+    }
+
+    return VELOCIDADES_TRAMO[ultimo]
 }
 
 /**
@@ -187,11 +212,10 @@ fun calcularVelocidad(puntuacion: Int): Float {
 
 /**
  * Puntuacion a la que se dispara la notificacion "Machape aburrido".
- *
- * Temporalmente a 10 para poder comprobar la cadena completa sin tener que
- * jugar 50 puntos. Subir a 50 cuando la notificacion este verificada.
+ * Coincide con el tope de dificultad: a partir de aqui ya no queda mas
+ * dificultad que ganar y se avisa a la otra persona.
  */
-const val PUNTOS_NOTIFICACION_ABURRIDO = 10
+const val PUNTOS_NOTIFICACION_ABURRIDO = 50
 
 /**
  * Verifica si se debe enviar la notificación "Machape aburrido".
