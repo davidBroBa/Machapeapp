@@ -14,9 +14,14 @@
 .cxx
 local.properties
 
-# Secretos: nunca deben entrar al repositorio
+# Secretos: nunca deben entrar al repositorio.
+# La service account da acceso total a Firebase desde el servidor.
 serviceAccountKey.json
 **/serviceAccountKey.json
 *.jks
 *.keystore
-google-services.json
+
+# OJO: app/google-services.json SI se versiona a proposito. Es la config
+# de cliente que necesita el plugin de Gradle para compilar, y no lleva
+# claves privadas: la API key va restringida por nombre de paquete y
+# certificado de firma. El secreto real es serviceAccountKey.json.
