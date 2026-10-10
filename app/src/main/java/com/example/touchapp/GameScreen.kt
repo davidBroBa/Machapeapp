@@ -57,6 +57,24 @@ private val IMAGENES_BASURA =
 private val IMAGENES_CORAZON = listOf(R.drawable.corazon)
 
 /**
+ * Las 8 imagenes en una sola lista, para que el sorteo sea uniforme.
+ *
+ * Antes el sorteo era en dos pasos: primero salia el tipo (60% comida, 30%
+ * basura, 10% corazon) y luego una imagen dentro de ese grupo. Con 4
+ * basuras y 3 comidas, eso dejaba a pesa y polilla en el 7,5% de los
+ * spawns mientras sushi y lasana llegaban al 20%. Sorting de una lista
+ * plana, las 8 salen el 12,5%.
+ *
+ * El precio: los grupos ya no se pueden repartir a voluntad, y como hay 4
+ * basuras frente a 3 comidas la basura pasa a ser lo mas frecuente (50%)
+ * por delante de la comida (37,5%). El corazon sube del 10% al 12,5%.
+ */
+private val POOL_IMAGENES: List<Pair<TipoObjeto, Int>> =
+    IMAGENES_COMIDA.map { TipoObjeto.COMIDA to it } +
+        IMAGENES_BASURA.map { TipoObjeto.BASURA to it } +
+        IMAGENES_CORAZON.map { TipoObjeto.CORAZON to it }
+
+/**
  * Semiejes de la hitbox de cada imagen, en dp.
  *
  * Medidos sobre los pixeles opacos de cada PNG (alfa >= 24) y escalados a
@@ -125,6 +143,15 @@ private const val OBJETO_LADO = 80f
 
 /** Separacion minima entre objetos al generarlos, en dp. */
 private const val SEPARACION_MINIMA = 120f
+
+/**
+ * Cada cuanto ms aparece un objeto, en ms.
+ *
+ * Bajarlo aumenta la dificultad por densidad: hay mas objetos en pantalla
+ * a la vez y mas chances de perder una vida. No es lo mismo que subir la
+ * velocidad de caida, que aprieta el tiempo para reaccionar.
+ */
+private const val INTERVALO_SPAWN_MS = 650L
 
 /** Desplazamiento del mapache por frame mientras una flecha este pulsada, en dp. */
 private const val VELOCIDAD_MAPACHE = 10f
@@ -205,21 +232,11 @@ fun GameScreen(
                 .filter { it.y < altoPantalla + OBJETO_LADO }
 
             // Generar un objeto cada cierto tiempo, no cada frame.
-            if (ahora - ultimoSpawn >= 800L) {
+            if (ahora - ultimoSpawn >= INTERVALO_SPAWN_MS) {
                 ultimoSpawn = ahora
 
-                val tipo = when (Random.nextInt(10)) {
-                    in 0..5 -> TipoObjeto.COMIDA
-                    in 6..8 -> TipoObjeto.BASURA
-                    else -> TipoObjeto.CORAZON
-                }
-
-                val imagenes = when (tipo) {
-                    TipoObjeto.COMIDA -> IMAGENES_COMIDA
-                    TipoObjeto.BASURA -> IMAGENES_BASURA
-                    TipoObjeto.CORAZON -> IMAGENES_CORAZON
-                }
-                val imagen = imagenes.random()
+                // Un solo sorteo: tipo e imagen salen siempre coherentes.
+                val (tipo, imagen) = POOL_IMAGENES.random()
 
                 val centroX = MAPACHE_LADO / 2f +
                     Random.nextFloat() * (anchoPantalla - MAPACHE_LADO)

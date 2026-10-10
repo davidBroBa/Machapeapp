@@ -22,6 +22,10 @@
 | Un radio por imagen, no por tipo | El helado es 26x60dp y la pesa 64x34dp: un radio común hacía que una colisionara y la otra no |
 | Dificultad por tramos, no rampa recta | El salto cada 10 puntos a partir de 20 se nota; una recta de 0 a 50 se percibía como "siempre igual" |
 | Marcador en columna a la izquierda | En una fila con `SpaceBetween`, "Vidas" caía bajo el botón de pausa |
+| Sorteo plano de las 8 imágenes, no en dos niveles | Sortear primero el tipo (60/30/10) y luego la imagen dejaba a las 4 basuras en el 7,5% y a las 3 comidas en el 20%. El usuario pidió la misma cantidad para todas |
+| Consecuencia aceptada del sorteo plano | Hay 4 basuras y 3 comidas, así que la basura pasó a ser lo más frecuente (50%) por delante de la comida (37,5%). Antes era al revés (60% comida). Habrá que reequilibrar si molesta |
+| Dificultad subida por velocidad **y** por densidad | Son dos palancas distintas: la velocidad aprieta el tiempo de reacción y el intervalo de spawn mete más objetos en pantalla a la vez. Subir solo una deja el juego plano |
+| `INTERVALO_SPAWN_MS` en constante, no en el `if` | Estaba en `800L` dentro del `if` de spawn, imposible de ajustar sin buscar el número mágico |
 
 - **El servidor de notificaciones NO puede depender de `nohup &`:** al cerrar la sesión SSH el proceso muerde (se comprobó: `ps` vacío y log congelado en la 01:31 mientras el usuario jugaba a las 19:38). Va como **servicio systemd de usuario** en `~/.config/systemd/user/machape-notificaciones.service` con `Restart=always`. Estado: `systemctl --user status machape-notificaciones`.
 - **`on('value')` reenvía el estado viejo al arrancar:** la primera emisión de `value` es el snapshot que ya había, no un evento nuevo. Sin descartarla, cada reinicio reenvía la última notificación a todos. Se ignora con un flag `primero`.
@@ -34,6 +38,9 @@
 - **Verificar que un objeto existe en pantalla no basta mirarlo caer:** `pesa` es 1 de 4 basuras = 7,5% de los spawns. Tras varias capturas sin verla, la duda real no era "no sale" sino "no la he visto". Se resolvió con un `Log.d` temporal en el spawn y `aapt2 dump resources` para mapear id → nombre. El log se quitó después.
 - **El marcador necesita `statusBarsPadding()`:** sin él, "Puntos" queda pegado al reloj. La Column ya no cabe contra el borde superior de la pantalla.
 - **Capturar en ráfaga no cubre una partida larga:** 30 capturas seguidas pesaban lo mismo porque la partida había terminado y todas eran el Game Over. Hay que reiniciar antes de cada tanda.
+- **Un `Log.d` de por vida no mide lo que uno cree:** la primera medición dio "intervalo 2 ms" porque dividía el recuento de spawns por la ventana de 60 s, cuando en realidad la partida había muerto a los 15 s. El intervalo real (650-668 ms medido con deltas entre timestamps) era correcto. Cuando el denominador no es el esperado, el número sale mal y parece un bug del código.
+- **La app puede reiniciarse sola y no es un crash:** con una notificación "Necesito atención" entrante, el toque del launcher relanza `MainActivity` y la pantalla vuelve a la pestaña Conectar. No aparece `FATAL` ni excepción. Antes de culpar al juego del Game Over, mirar `ActivityManager: START ... from uid 10176` en logcat.
+- **Dos niveles de sorteo prodicen frecuencias desiguales:** si el tipo se sortea primero y la imagen después dentro del grupo, la frecuencia de cada imagen es la de su grupo dividida entre cuántas tenga. Con 4 basuras y 3 comidas sale 7,5% frente a 20% aunque el `.random()` sea uniforme en los dos pasos. Para igualar hay que aplanar a una sola lista.
 
 ## Aprendizaje y Errores a Evitar
 - **UNIDADES:** `screenHeightDp.dp.toPx()` da px; aplicar `.toDp()` encima divide mal. Usar `screenHeightDp.toFloat()` y `dp` directo.
@@ -48,7 +55,8 @@
 - **Samsung:** notificaciones en 2º plano requieren desactivar optimización de batería.
 
 ## Próximos Pasos
-1. Probar en el Galaxy S25 Ultra físico
-2. Verificar notificación "Machape aburrido" a 50 puntos con 2 dispositivos reales (ya no hace falta jugar 50 en el emulador)
+1. Probar en el Galaxy S25 Ultra físico: la dificultad actual (650 ms de spawn + 50% basura) está medida en emulador, y un teléfono real puede ir más lento
+2. Verificar notificación "Machape aburrido" a 50 puntos con 2 dispositivos reales
 3. Versionar `server.js`: hoy solo vive en el servidor y si se pierde se pierden las notificaciones
 4. Añadir sonido al caer cada tipo nuevo (lasana, helado, gorra, pesa, polilla)
+5. Si la basura al 50% resulta demasiado, replantear el reparto de `POOL_IMAGENES` (repetir comidas en la lista para devolver el 60/30/10 manteniendo la igualdad entre imágenes del mismo tipo)

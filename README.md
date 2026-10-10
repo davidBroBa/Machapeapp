@@ -237,20 +237,26 @@ Sube por tramos, no con una rampa recta. En `GameLogic.kt`:
 
 ```kotlin
 private val ESCALONES_DIFICULTAD = floatArrayOf(0f, 20f, 30f, 40f, 50f)
-private val VELOCIDADES_TRAMO   = floatArrayOf(2.2f, 4.4f, 5.4f, 6.4f, 7.4f)
+private val VELOCIDADES_TRAMO   = floatArrayOf(2.6f, 5.4f, 6.6f, 7.8f, 9.0f)
 ```
 
-| Puntos | Velocidad (dp/frame) |
-|---|---|
-| 0 | 2.2 |
-| 20 | 4.4 |
-| 30 | 5.4 |
-| 40 | 6.4 |
-| 50 | 7.4 ← tope, no sube más |
+| Puntos | Velocidad (dp/frame) | Tiempo en cruzar |
+|---|---|---|
+| 0 | 2.6 | ~5,6 s |
+| 20 | 5.4 | ~2,7 s |
+| 30 | 6.6 | ~2,2 s |
+| 40 | 7.8 | ~1,9 s |
+| 50 | 9.0 | ~1,6 s ← tope, no sube más |
 
 `velocidadCaida()` interpola dentro de cada tramo y a partir de 50 devuelve
-siempre 7.4. El tope es también el umbral de la notificación "Machape
+siempre 9.0. El tope es también el umbral de la notificación "Machape
 aburrido": cuando ya no queda dificultad que ganar, se avisa.
+
+La dificultad sube por dos vías independientes:
+
+- **Velocidad** (`VELOCIDADES_TRAMO`): aprieta el tiempo para reaccionar.
+- **Densidad** (`INTERVALO_SPAWN_MS` = 650): más objetos en pantalla a la
+  vez, y por tanto más oportunidades de perder una vida.
 
 ---
 
@@ -274,6 +280,21 @@ radio por tipo:
 El helado es alto y estrecho y la pesa ancha y baja: con un radio común,
 una colisionaría donde la otra no.
 
+### Cómo se reparten
+
+Las 8 se sortean de **una sola lista** (`POOL_IMAGENES`), así que cada una
+sale el 12,5%. Verificado con 135 spawns: entre 13 y 21 apariciones cada una,
+lo que es el margen esperable al azar.
+
+Antes se sorteaba en dos pasos —primero el tipo, luego la imagen dentro del
+grupo— y eso dejaba las 4 basuras en el 7,5% y las 3 comidas en el 20%, así
+que `pesa` y `polilla` casi no se veían.
+
+**Ojo con el efecto secundario**: al aplanarlo, los grupos ya no se reparten
+a voluntad. Como hay 4 basuras y 3 comidas, la basura pasó a ser lo más
+frecuente (50%) por delante de la comida (37,5%). Antes era al revés (60%
+comida, 30% basura, 10% corazón).
+
 ---
 
 ## Pendiente
@@ -292,6 +313,10 @@ Cosas que **no están terminadas**, para no darlas por buenas:
       que el push llega con dos Galaxy reales.
 - [ ] **Sonido solo para sushi/ok/corazón.** Las cinco imágenes nuevas
       reutilizan esos sonidos hasta que se graben los suyos.
+- [ ] **Dificultad sin verificar en físico.** Los valores están medidos en
+      emulador, pero si 650 ms + 50% de basura resulta demasiado en un
+      teléfono real, hay que bajar `INTERVALO_SPAWN_MS` o el tope de
+      `VELOCIDADES_TRAMO`.
 - [ ] Sin tests instrumentados: la UI solo se verifica a mano en emulador.
 - [ ] Sin ProGuard en release (`isMinifyEnabled = false`).
 

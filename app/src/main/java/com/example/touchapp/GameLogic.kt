@@ -46,10 +46,11 @@ private val ESCALONES_DIFICULTAD = floatArrayOf(0f, 20f, 30f, 40f, 50f)
 
 /**
  * Velocidad de caída en dp por frame a 60 FPS, en cada escalón.
- * Con la pantalla del emulador, 2.2 dp/frame tarda unos 6 s en cruzar y
- * 7.4 dp/frame unos 1.8 s.
+ *
+ * Recorren unos 880 dp de pantalla, así que 2.6 dp/frame tardan unos 5,6 s
+ * en cruzar y 9.0 dp/frame unos 1,6 s.
  */
-private val VELOCIDADES_TRAMO = floatArrayOf(2.2f, 4.4f, 5.4f, 6.4f, 7.4f)
+private val VELOCIDADES_TRAMO = floatArrayOf(2.6f, 5.4f, 6.6f, 7.8f, 9.0f)
 
 /**
  * Velocidad de caída de los objetos, en dp por frame a 60 FPS.

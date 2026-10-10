@@ -130,15 +130,24 @@ class GameLogicTest {
     // Velocidad de caída por tramos
     @Test
     fun `velocidadCaida arranca suave`() {
-        assertEquals(2.2f, velocidadCaida(0), 0.001f)
+        assertEquals(2.6f, velocidadCaida(0), 0.001f)
     }
 
     @Test
     fun `velocidadCaida respeta los escalones de 20 30 40 y 50`() {
-        assertEquals(4.4f, velocidadCaida(20), 0.001f)
-        assertEquals(5.4f, velocidadCaida(30), 0.001f)
-        assertEquals(6.4f, velocidadCaida(40), 0.001f)
-        assertEquals(7.4f, velocidadCaida(50), 0.001f)
+        assertEquals(5.4f, velocidadCaida(20), 0.001f)
+        assertEquals(6.6f, velocidadCaida(30), 0.001f)
+        assertEquals(7.8f, velocidadCaida(40), 0.001f)
+        assertEquals(9.0f, velocidadCaida(50), 0.001f)
+    }
+
+    @Test
+    fun `velocidadCaida es mas rapida que en la version anterior`() {
+        // Fijado a propósito para que subir la dificultad no pase
+        // inadvertida. Version previa: 2.2 / 4.4 / 5.4 / 6.4 / 7.4.
+        assertTrue(velocidadCaida(0) > 2.2f)
+        assertTrue(velocidadCaida(20) > 4.4f)
+        assertTrue(velocidadCaida(50) > 7.4f)
     }
 
     @Test
@@ -162,7 +171,7 @@ class GameLogicTest {
         val techo = velocidadCaida(50)
         assertEquals(techo, velocidadCaida(60), 0.001f)
         assertEquals(techo, velocidadCaida(200), 0.001f)
-        assertEquals(7.4f, techo, 0.001f)
+        assertEquals(9.0f, techo, 0.001f)
     }
 
     @Test
